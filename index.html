@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英汉美术词典</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Sans+SC:wght@300;400&display=swap');
+:root{--ink:#1a1410;--ink-light:#5a4e46;--ink-faint:#9a8e86;--paper:#faf8f4;--paper-warm:#f0ebe2;--red:#8b2215;--border:#d4c8b8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--paper);color:var(--ink);font-family:'Noto Sans SC',sans-serif;font-weight:300;min-height:100vh;}
+
+header{background:var(--ink);color:var(--paper);padding:18px 40px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.3);}
+.header-title h1{font-family:'EB Garamond',serif;font-size:20px;font-weight:500;}
+.header-title .sub{font-size:11px;color:#888;letter-spacing:.15em;margin-top:3px;}
+.hdiv{width:1px;height:36px;background:#444;flex-shrink:0;}
+.search-wrap{flex:1;position:relative;max-width:480px;}
+.search-wrap input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:9px 16px 9px 38px;color:var(--paper);font-family:'EB Garamond',serif;font-size:16px;outline:none;transition:.2s;}
+.search-wrap input::placeholder{color:#666;}
+.search-wrap input:focus{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.1);}
+.sicon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#666;font-size:13px;pointer-events:none;}
+.edit-mode-btn{background:none;border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#aaa;padding:7px 14px;font-size:12px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:.2s;white-space:nowrap;flex-shrink:0;}
+.edit-mode-btn:hover{border-color:rgba(255,255,255,.5);color:white;}
+.edit-mode-btn.active{background:var(--red);border-color:var(--red);color:white;}
+
+.filter-bar{background:var(--paper-warm);border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-items:center;overflow-x:auto;scrollbar-width:none;}
+.filter-bar::-webkit-scrollbar{display:none;}
+.filter-label{font-size:11px;color:var(--ink-faint);letter-spacing:.1em;white-space:nowrap;padding:12px 16px 12px 0;border-right:1px solid var(--border);margin-right:8px;}
+.filter-btn{background:none;border:none;padding:12px 14px;font-family:'Noto Sans SC',sans-serif;font-size:12px;font-weight:300;color:var(--ink-light);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:.15s;}
+.filter-btn:hover{color:var(--ink);}
+.filter-btn.active{color:var(--red);border-bottom-color:var(--red);font-weight:400;}
+
+.stats-bar{padding:10px 40px;background:var(--paper);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.stats-text{font-size:12px;color:var(--ink-faint);}
+.stats-text strong{color:var(--ink);font-weight:400;}
+.bar-actions{display:flex;gap:8px;}
+.action-btn{background:none;border:1px solid var(--border);border-radius:3px;padding:5px 12px;font-size:11px;font-family:'Noto Sans SC',sans-serif;color:var(--ink-light);cursor:pointer;transition:.15s;white-space:nowrap;}
+.action-btn:hover{background:var(--paper-warm);}
+
+.alpha-nav{background:var(--paper);border-bottom:1px solid var(--border);padding:8px 40px;display:flex;flex-wrap:wrap;gap:2px;}
+.alpha-btn{background:none;border:none;width:28px;height:28px;font-family:'EB Garamond',serif;font-size:14px;color:var(--ink-light);cursor:pointer;border-radius:3px;transition:.1s;}
+.alpha-btn:hover{background:var(--paper-warm);}
+.alpha-btn.active{background:var(--red);color:white;}
+.alpha-btn:disabled{color:var(--border);cursor:default;}
+
+.main{max-width:1200px;margin:0 auto;padding:28px 40px;}
+.entries-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);}
+.entry-card{background:var(--paper);padding:14px 18px;cursor:pointer;transition:background .12s;position:relative;}
+.entry-card:hover{background:var(--paper-warm);}
+.entry-card.expanded{background:var(--paper-warm);}
+.entry-en{font-family:'EB Garamond',serif;font-size:17px;font-weight:500;line-height:1.3;padding-right:56px;}
+.hl{background:rgba(139,34,21,.12);border-radius:2px;padding:0 1px;}
+.entry-zh{font-family:'Noto Serif SC',serif;font-size:13px;font-weight:300;color:var(--ink-light);margin-top:3px;line-height:1.5;}
+.badge{position:absolute;top:14px;right:14px;font-size:9px;letter-spacing:.1em;padding:2px 6px;border-radius:2px;}
+.badge-person{background:#e8f0e8;color:#3a6a3a;}
+.badge-place{background:#e8ecf4;color:#3a4a7a;}
+.badge-mythology{background:#f4e8f0;color:#7a3a6a;}
+.badge-artwork{background:#f0ece0;color:#6a5a2a;}
+.badge-term,.badge-other{display:none;}
+.entry-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.entry-card.expanded .entry-detail{display:block;}
+.entry-notes{font-size:12px;color:var(--ink-light);font-style:italic;line-height:1.6;margin-bottom:8px;padding-left:8px;border-left:2px solid var(--border);}
+.compounds-title{font-size:10px;letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:5px;}
+.compound-item{display:flex;gap:12px;padding:4px 0;border-bottom:1px dashed var(--border);align-items:baseline;}
+.compound-item:last-child{border-bottom:none;}
+.compound-en{font-family:'EB Garamond',serif;font-size:14px;color:var(--ink);flex:0 0 auto;min-width:120px;}
+.compound-zh{font-family:'Noto Serif SC',serif;font-size:12px;color:var(--ink-light);font-weight:300;}
+.edit-btn{display:none;margin-top:10px;background:none;border:1px solid var(--border);border-radius:3px;padding:4px 10px;font-size:11px;color:var(--ink-faint);cursor:pointer;font-family:'Noto Sans SC',sans-serif;transition:.15s;}
+.edit-btn:hover{border-color:var(--red);color:var(--red);}
+.edit-mode .edit-btn{display:inline-block;}
+.add-entry-btn{display:none;position:fixed;bottom:32px;right:32px;background:var(--red);color:white;border:none;border-radius:50%;width:52px;height:52px;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:200;transition:.2s;align-items:center;justify-content:center;}
+.add-entry-btn:hover{background:#6a1a10;transform:scale(1.05);}
+.edit-mode .add-entry-btn{display:flex;}
+.empty-state{grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--ink-faint);}
+.empty-state .icon{font-size:48px;margin-bottom:16px;}
+.loading{text-align:center;padding:80px;color:var(--ink-faint);font-size:13px;letter-spacing:.1em;}
+.pagination{display:flex;justify-content:center;align-items:center;gap:6px;padding:28px 0;}
+.page-btn{background:none;border:1px solid var(--border);border-radius:3px;width:32px;height:32px;font-size:13px;font-family:'EB Garamond',serif;color:var(--ink-light);cursor:pointer;transition:.1s;display:flex;align-items:center;justify-content:center;}
+.page-btn:hover{background:var(--paper-warm);}
+.page-btn.active{background:var(--ink);color:white;border-color:var(--ink);}
+.page-btn:disabled{opacity:.3;cursor:default;}
+.page-info{font-size:12px;color:var(--ink-faint);padding:0 6px;}
+
+/* 弹窗通用 */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;padding:20px;}
+.overlay.open{display:flex;}
+
+/* 登录弹窗 */
+.login-modal{background:var(--paper);border-radius:8px;width:320px;padding:36px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;}
+.login-modal h3{font-family:'EB Garamond',serif;font-size:22px;font-weight:400;margin-bottom:6px;}
+.login-modal p{font-size:12px;color:var(--ink-faint);margin-bottom:20px;}
+.login-modal input{width:100%;border:1px solid var(--border);border-radius:4px;padding:10px 12px;font-size:14px;font-family:'Noto Sans SC',sans-serif;outline:none;margin-bottom:10px;color:var(--ink);}
+.login-modal input:focus{border-color:var(--ink-light);}
+.login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+.login-submit{width:100%;background:var(--ink);color:white;border:none;border-radius:4px;padding:10px;font-size:13px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:.15s;}
+.login-submit:hover{background:var(--red);}
+.login-submit:disabled{opacity:.6;cursor:default;}
+
+/* 编辑弹窗 */
+.edit-modal{background:var(--paper);border-radius:8px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-hd{padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.modal-hd h2{font-family:'EB Garamond',serif;font-size:20px;font-weight:400;}
+.modal-close{background:none;border:none;font-size:20px;color:var(--ink-faint);cursor:pointer;padding:4px;line-height:1;}
+.modal-close:hover{color:var(--ink);}
+.modal-body{padding:18px 24px;}
+.fg{margin-bottom:14px;}
+.fg label{display:block;font-size:11px;letter-spacing:.1em;color:var(--ink-faint);margin-bottom:4px;text-transform:uppercase;}
+.fg input,.fg textarea,.fg select{width:100%;border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-family:'Noto Sans SC',sans-serif;font-size:13px;color:var(--ink);background:var(--paper);outline:none;transition:.15s;resize:vertical;}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--ink-light);}
+.fg textarea{min-height:56px;}
+.comp-editor{border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.comp-row{display:grid;grid-template-columns:1fr 1fr auto;border-bottom:1px solid var(--border);}
+.comp-row:last-child{border-bottom:none;}
+.comp-row input{border:none;border-radius:0;border-right:1px solid var(--border);padding:7px 10px;font-size:12px;font-family:'Noto Sans SC',sans-serif;outline:none;}
+.comp-row input:last-of-type{border-right:none;}
+.comp-row .del-c{background:none;border:none;color:#ccc;cursor:pointer;padding:0 10px;font-size:16px;transition:.1s;}
+.comp-row .del-c:hover{color:var(--red);}
+.add-c-btn{background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:8px 12px;font-size:12px;font-family:'Noto Sans SC',sans-serif;width:100%;text-align:left;border-top:1px solid var(--border);transition:.1s;}
+.add-c-btn:hover{color:var(--ink);background:var(--paper-warm);}
+.modal-ft{padding:14px 24px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.btn-save{background:var(--ink);color:white;border:none;border-radius:4px;padding:9px 20px;font-size:13px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:.15s;}
+.btn-save:hover{background:var(--red);}
+.btn-del{background:none;border:1px solid #ddd;border-radius:4px;padding:9px 16px;font-size:13px;font-family:'Noto Sans SC',sans-serif;color:#c44;cursor:pointer;transition:.15s;}
+.btn-del:hover{background:#fff0f0;border-color:#c44;}
+.btn-cancel{background:none;border:1px solid var(--border);border-radius:4px;padding:9px 16px;font-size:13px;font-family:'Noto Sans SC',sans-serif;color:var(--ink-light);cursor:pointer;transition:.15s;}
+.btn-cancel:hover{background:var(--paper-warm);}
+
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:white;padding:11px 20px;border-radius:6px;font-size:13px;z-index:400;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media(max-width:768px){
+  header,.filter-bar,.stats-bar,.alpha-nav,.main{padding-left:16px;padding-right:16px;}
+  .entries-grid{grid-template-columns:1fr;}
+  .hdiv{display:none;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <h1>An English-Chinese Dictionary of Fine Arts</h1>
+    <div class="sub">英 汉 美 术 词 典</div>
+  </div>
+  <div class="hdiv"></div>
+  <div class="search-wrap">
+    <span class="sicon">🔍</span>
+    <input type="text" id="searchInput" placeholder="搜索英文或中文词条...">
+  </div>
+  <button class="edit-mode-btn" id="editModeBtn" onclick="toggleEditMode()">✏️ 编辑</button>
+</header>
+
+<div class="filter-bar">
+  <span class="filter-label">类型</span>
+  <button class="filter-btn active" onclick="setFilter('all',this)">全部</button>
+  <button class="filter-btn" onclick="setFilter('term',this)">美术术语</button>
+  <button class="filter-btn" onclick="setFilter('person',this)">艺术家</button>
+  <button class="filter-btn" onclick="setFilter('place',this)">地点·机构</button>
+  <button class="filter-btn" onclick="setFilter('mythology',this)">神话·宗教</button>
+</div>
+
+<div class="stats-bar">
+  <div class="stats-text" id="statsText">加载中...</div>
+  <div class="bar-actions" id="barActions" style="display:none">
+    <button class="action-btn" onclick="exportData()">导出备份</button>
+    <button class="action-btn" onclick="logOut()" style="color:#c44">退出编辑</button>
+  </div>
+</div>
+
+<div style="background:var(--paper);border-bottom:1px solid var(--border);">
+  <div class="alpha-nav" id="alphNav"></div>
+</div>
+
+<div class="main">
+  <div id="entriesGrid" class="entries-grid">
+    <div class="loading">正在从数据库加载词条...</div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<button class="add-entry-btn" id="addBtn" onclick="openEdit(null)" title="新增词条">＋</button>
+
+<!-- 登录弹窗 -->
+<div class="overlay" id="loginOverlay">
+  <div class="login-modal">
+    <h3>编辑模式</h3>
+    <p>请登录以继续</p>
+    <input type="email" id="loginEmail" placeholder="邮箱" onkeydown="if(event.key==='Enter')document.getElementById('loginPw').focus()">
+    <input type="password" id="loginPw" placeholder="密码" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-err" id="loginErr"></div>
+    <button class="login-submit" id="loginBtn" onclick="doLogin()">登录</button>
+  </div>
+</div>
+
+<!-- 编辑弹窗 -->
+<div class="overlay" id="editOverlay" onclick="closeEditOnBg(event)">
+  <div class="edit-modal">
+    <div class="modal-hd">
+      <h2 id="modalTitle">编辑词条</h2>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label>英文词条</label><input type="text" id="editEn"></div>
+      <div class="fg"><label>中文释义</label><textarea id="editZh"></textarea></div>
+      <div class="fg"><label>补充说明</label><textarea id="editNotes"></textarea></div>
+      <div class="fg"><label>词条类型</label>
+        <select id="editType">
+          <option value="term">美术术语</option>
+          <option value="person">艺术家</option>
+          <option value="place">地点·机构</option>
+          <option value="mythology">神话·宗教</option>
+          <option value="artwork">作品</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>复合词组</label>
+        <div class="comp-editor" id="compEditor"></div>
+        <button class="add-c-btn" onclick="addCompRow()">＋ 添加复合词组</button>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-del" id="btnDel" onclick="deleteEntry()">删除</button>
+      <button class="btn-cancel" onclick="closeEdit()">取消</button>
+      <button class="btn-save" onclick="saveEntry()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 唯一需要放在这里的是 Publishable Key（可以公开）──────────────────────
+const SB_URL = 'https://vgqanujkexquegzvmzge.supabase.co';
+const SB_ANON = 'sb_publishable_fD3mdgLmjUuCTiQ_W982UA_--mcwLG6';
+
+// ── 状态 ────────────────────────────────────────────────────────────────────
+let allEntries=[], filtered=[], currentType='all', currentAlpha='', searchQuery='', currentPage=1, editingId=null, authToken=null;
+const PAGE_SIZE=60, ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// ── API 工具（公开读取用 anon key，写入用登录后的 token）────────────────────
+function getHeaders(write=false){
+  const key = write && authToken ? authToken : SB_ANON;
+  const h = {'apikey':SB_ANON,'Content-Type':'application/json'};
+  h['Authorization'] = write && authToken ? `Bearer ${authToken}` : `Bearer ${SB_ANON}`;
+  return h;
+}
+
+async function sbGet(path){
+  const r = await fetch(`${SB_URL}/rest/v1/${path}`, {headers:getHeaders()});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function sbWrite(method, path, body){
+  const r = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    method, headers:{...getHeaders(true),'Prefer':'return=representation'},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return method==='DELETE' ? null : r.json();
+}
+
+// ── 加载全部词条 ─────────────────────────────────────────────────────────────
+async function loadAll(){
+  document.getElementById('entriesGrid').innerHTML='<div class="loading">正在加载词条...</div>';
+  try {
+    let all=[], offset=0;
+    while(true){
+      const batch = await sbGet(`entries?select=id,english,chinese,notes,type,compounds&order=english.asc&limit=1000&offset=${offset}`);
+      all=all.concat(batch);
+      if(batch.length<1000) break;
+      offset+=1000;
+    }
+    allEntries=all;
+    buildAlphaNav();
+    applyFilters();
+  } catch(e){
+    document.getElementById('entriesGrid').innerHTML=`<div class="empty-state"><div class="icon">⚠️</div><p>加载失败：${e.message}</p></div>`;
+  }
+}
+
+// ── 字母导航 ─────────────────────────────────────────────────────────────────
+function buildAlphaNav(){
+  const nav=document.getElementById('alphNav'); nav.innerHTML='';
+  const avail=new Set(allEntries.map(e=>e.english[0]?.toUpperCase()).filter(Boolean));
+  const b0=mkA('全',()=>setAlpha('',b0),true); nav.appendChild(b0);
+  ALPHA.forEach(l=>{ const b=mkA(l,()=>setAlpha(l,b),false,!avail.has(l)); nav.appendChild(b); });
+}
+function mkA(t,fn,active,disabled){
+  const b=document.createElement('button');
+  b.className='alpha-btn'+(active?' active':''); b.textContent=t; b.disabled=!!disabled; b.onclick=fn; return b;
+}
+function setAlpha(l,btn){
+  currentAlpha=l; currentPage=1;
+  document.querySelectorAll('.alpha-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); applyFilters();
+}
+
+// ── 过滤 ─────────────────────────────────────────────────────────────────────
+function setFilter(type,btn){
+  currentType=type; currentPage=1;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); applyFilters();
+}
+function applyFilters(){
+  filtered=allEntries.filter(e=>{
+    if(currentType!=='all'&&e.type!==currentType) return false;
+    if(currentAlpha&&!e.english.toUpperCase().startsWith(currentAlpha)) return false;
+    if(searchQuery){
+      const q=searchQuery.toLowerCase();
+      return e.english.toLowerCase().includes(q)||(e.chinese||'').includes(q)||
+        (e.notes||'').includes(q)||
+        (e.compounds||[]).some(c=>c.english?.toLowerCase().includes(q)||(c.chinese||'').includes(q));
+    }
+    return true;
+  });
+  updateStats(); renderGrid(); renderPagination();
+}
+function updateStats(){
+  const el=document.getElementById('statsText');
+  const t=allEntries.length,s=filtered.length;
+  el.innerHTML=(searchQuery||currentType!=='all'||currentAlpha)
+    ?`找到 <strong>${s}</strong> 条 · 共 <strong>${t}</strong> 条`
+    :`共 <strong>${t}</strong> 条词条`;
+}
+
+// ── 渲染 ─────────────────────────────────────────────────────────────────────
+function renderGrid(){
+  const grid=document.getElementById('entriesGrid');
+  const page=filtered.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
+  if(!page.length){ grid.innerHTML='<div class="empty-state"><div class="icon">🔍</div><p>没有找到匹配词条</p></div>'; return; }
+  const isEditor=!!authToken;
+  grid.innerHTML=page.map(e=>{
+    const lbl={person:'艺术家',place:'地点',mythology:'神话',artwork:'作品'}[e.type]||'';
+    let det='';
+    if(e.notes) det+=`<div class="entry-notes">${e.notes}</div>`;
+    if(e.compounds?.length){
+      det+=`<div class="compounds-title">复合词组</div>`;
+      det+=e.compounds.map(c=>`<div class="compound-item"><span class="compound-en">${hl(c.english||'')}</span><span class="compound-zh">${c.chinese||''}</span></div>`).join('');
+    }
+    return `<div class="entry-card" onclick="toggleCard(this)">
+      ${lbl?`<span class="badge badge-${e.type}">${lbl}</span>`:''}
+      <div class="entry-en">${hl(e.english)}</div>
+      <div class="entry-zh">${e.chinese||''}</div>
+      ${det?`<div class="entry-detail">${det}</div>`:''}
+      ${isEditor?`<button class="edit-btn" onclick="event.stopPropagation();openEdit(${e.id})">✏️ 编辑</button>`:''}
+    </div>`;
+  }).join('');
+}
+function hl(t){
+  if(!searchQuery||!t) return t||'';
+  const esc=searchQuery.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return t.replace(new RegExp(`(${esc})`,'gi'),'<span class="hl">$1</span>');
+}
+function toggleCard(card){ const d=card.querySelector('.entry-detail'); if(d) card.classList.toggle('expanded'); }
+
+// ── 分页 ─────────────────────────────────────────────────────────────────────
+function renderPagination(){
+  const total=Math.ceil(filtered.length/PAGE_SIZE);
+  const el=document.getElementById('pagination');
+  if(total<=1){el.innerHTML='';return;}
+  let html=`<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  const range=[];
+  for(let i=1;i<=total;i++){
+    if(i===1||i===total||Math.abs(i-currentPage)<=2) range.push(i);
+    else if(range[range.length-1]!=='…') range.push('…');
+  }
+  range.forEach(p=>{ html+=p==='…'?`<span class="page-info">…</span>`:`<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`; });
+  html+=`<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>›</button>`;
+  html+=`<span class="page-info">${currentPage}/${total} 页</span>`;
+  el.innerHTML=html;
+}
+function goPage(n){ const t=Math.ceil(filtered.length/PAGE_SIZE); if(n<1||n>t)return; currentPage=n; renderGrid(); renderPagination(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+// ── 搜索 ─────────────────────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input',e=>{
+  searchQuery=e.target.value.trim(); currentPage=1;
+  currentAlpha='';
+  document.querySelectorAll('.alpha-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  applyFilters();
+});
+
+// ── 登录 ─────────────────────────────────────────────────────────────────────
+function toggleEditMode(){
+  if(authToken){ logOut(); return; }
+  document.getElementById('loginOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('loginEmail').focus(),100);
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pw=document.getElementById('loginPw').value;
+  const btn=document.getElementById('loginBtn');
+  document.getElementById('loginErr').textContent='';
+  if(!email||!pw){ document.getElementById('loginErr').textContent='请填写邮箱和密码'; return; }
+  btn.disabled=true; btn.textContent='登录中...';
+  try {
+    const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+      method:'POST',
+      headers:{'apikey':SB_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pw})
+    });
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error_description||data.msg||'登录失败');
+    authToken = data.access_token;
+    document.getElementById('loginOverlay').classList.remove('open');
+    document.getElementById('loginEmail').value='';
+    document.getElementById('loginPw').value='';
+    document.getElementById('editModeBtn').classList.add('active');
+    document.getElementById('editModeBtn').textContent='✅ 编辑中';
+    document.getElementById('barActions').style.display='flex';
+    document.body.classList.add('edit-mode');
+    document.getElementById('addBtn').style.display='flex';
+    renderGrid();
+    showToast('✅ 已进入编辑模式');
+  } catch(e){
+    document.getElementById('loginErr').textContent=e.message;
+  } finally {
+    btn.disabled=false; btn.textContent='登录';
+  }
+}
+
+function logOut(){
+  authToken=null;
+  document.getElementById('editModeBtn').classList.remove('active');
+  document.getElementById('editModeBtn').textContent='✏️ 编辑';
+  document.getElementById('barActions').style.display='none';
+  document.body.classList.remove('edit-mode');
+  document.getElementById('addBtn').style.display='none';
+  renderGrid();
+  showToast('已退出编辑模式');
+}
+
+// ── 编辑弹窗 ─────────────────────────────────────────────────────────────────
+function openEdit(id){
+  editingId=id;
+  const e=id===null?{english:'',chinese:'',notes:'',type:'term',compounds:[]}:allEntries.find(x=>x.id===id)||{};
+  document.getElementById('modalTitle').textContent=id===null?'新增词条':'编辑词条';
+  document.getElementById('editEn').value=e.english||'';
+  document.getElementById('editZh').value=e.chinese||'';
+  document.getElementById('editNotes').value=e.notes||'';
+  document.getElementById('editType').value=e.type||'term';
+  document.getElementById('btnDel').style.display=id===null?'none':'';
+  renderCompEditor(e.compounds||[]);
+  document.getElementById('editOverlay').classList.add('open');
+}
+function closeEdit(){ document.getElementById('editOverlay').classList.remove('open'); }
+function closeEditOnBg(e){ if(e.target===document.getElementById('editOverlay')) closeEdit(); }
+
+function renderCompEditor(comps){
+  const ed=document.getElementById('compEditor');
+  ed.innerHTML=comps.map((c,i)=>`
+    <div class="comp-row">
+      <input type="text" placeholder="英文" value="${escH(c.english||'')}" oninput="updComp(${i},'english',this.value)">
+      <input type="text" placeholder="中文" value="${escH(c.chinese||'')}" oninput="updComp(${i},'chinese',this.value)">
+      <button class="del-c" onclick="delComp(${i})">✕</button>
+    </div>`).join('');
+  ed._comps=comps.map(c=>({...c}));
+}
+function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function updComp(i,f,v){ document.getElementById('compEditor')._comps[i][f]=v; }
+function delComp(i){ const ed=document.getElementById('compEditor'); ed._comps.splice(i,1); renderCompEditor(ed._comps); }
+function addCompRow(){ const ed=document.getElementById('compEditor'); const c=ed._comps||[]; c.push({english:'',chinese:''}); renderCompEditor(c); }
+
+async function saveEntry(){
+  const en=document.getElementById('editEn').value.trim();
+  if(!en){ alert('英文词条不能为空'); return; }
+  const ed=document.getElementById('compEditor');
+  const data={english:en,chinese:document.getElementById('editZh').value.trim(),notes:document.getElementById('editNotes').value.trim(),type:document.getElementById('editType').value,compounds:(ed._comps||[]).filter(c=>c.english?.trim())};
+  try {
+    if(editingId===null){
+      const res=await sbWrite('POST','entries',data);
+      allEntries.unshift(res[0]);
+    } else {
+      await sbWrite('PATCH',`entries?id=eq.${editingId}`,data);
+      const idx=allEntries.findIndex(e=>e.id===editingId);
+      if(idx>-1) allEntries[idx]={...allEntries[idx],...data};
+    }
+    closeEdit(); buildAlphaNav(); applyFilters();
+    showToast('✅ 已保存');
+  } catch(e){ alert('保存失败：'+e.message); }
+}
+
+async function deleteEntry(){
+  const entry=allEntries.find(e=>e.id===editingId);
+  if(!confirm(`确定删除「${entry?.english}」吗？`)) return;
+  try {
+    await sbWrite('DELETE',`entries?id=eq.${editingId}`);
+    allEntries=allEntries.filter(e=>e.id!==editingId);
+    closeEdit(); buildAlphaNav(); applyFilters();
+    showToast('已删除');
+  } catch(e){ alert('删除失败：'+e.message); }
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(allEntries,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='entries_backup.json'; a.click();
+  showToast('✅ 已导出备份');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+loadAll();
+</script>
+</body>
+</html>
